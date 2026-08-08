@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#176b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cyklotrasy CZ">
+<title>Cyklotrasy CZ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f3f5f6;--panel:#fff;--text:#17202a;--muted:#66727d;--line:#dfe4e8;--accent:#176b45;--accent2:#0f5132;--warn:#9a6410}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+.app{display:grid;grid-template-columns:390px 1fr;height:100dvh}.sidebar{background:var(--panel);border-right:1px solid var(--line);padding:16px;overflow:auto;z-index:1000}
+h1{font-size:23px;margin:0}.subtitle{color:var(--muted);margin:2px 0 14px}.section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+label{display:block;font-weight:700;margin:0 0 7px}button,input,select{font:inherit}button{border:0;border-radius:10px;padding:9px 11px;background:#e9eef0;color:var(--text);font-weight:700;cursor:pointer}button.primary{background:var(--accent);color:white;width:100%;padding:12px}button:disabled{opacity:.5}
+.row{display:flex;gap:7px}.row>*{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.slider{display:grid;grid-template-columns:1fr 72px;gap:10px;align-items:center}input[type=range]{width:100%}
+input[type=number],input[type=text],select{width:100%;padding:8px;border:1px solid var(--line);border-radius:9px;background:white}.value{text-align:right;font-weight:800}.hint{font-size:12px;color:var(--muted);line-height:1.4;margin-top:6px}
+.status{font-size:13px;color:var(--muted);min-height:18px;margin-top:8px}.cards{display:grid;gap:9px;margin-top:9px}.card{border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff;cursor:pointer}.card.active{border:2px solid var(--accent);padding:10px}
+.cardtitle{display:flex;justify-content:space-between;font-weight:800}.tag{font-size:11px;padding:3px 7px;border-radius:999px;background:#edf5f0;color:var(--accent2)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}.stat b{display:block;font-size:15px}.stat span{font-size:10px;color:var(--muted)}
+.card-actions{display:flex;gap:6px;margin-top:9px}.card-actions button{flex:1;font-size:12px}.favrow{display:flex;gap:6px;margin-top:7px}.favrow select{flex:1}.favrow button{white-space:nowrap}
+details{margin-top:9px}summary{font-weight:700;cursor:pointer}.check{display:flex;align-items:center;gap:7px;margin:7px 0;font-size:13px}.check input{width:auto}.smallnum{display:grid;grid-template-columns:1fr 85px;gap:8px;align-items:center;margin-top:7px;font-size:13px}
+#map{height:100%}.maphelp{position:absolute;right:12px;top:12px;background:white;padding:8px 10px;border-radius:9px;box-shadow:0 2px 10px #0002;z-index:500;font-size:12px}
+.elev{height:120px;margin-top:9px}.score{font-weight:800}.score.good{color:var(--accent)}.score.warn{color:var(--warn)}
+.toast{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:#17202a;color:#fff;padding:10px 14px;border-radius:10px;z-index:3000;display:none;font-size:13px}
+@media(max-width:850px){.app{display:flex;flex-direction:column}.sidebar{height:50dvh;min-height:360px;border-right:0;border-bottom:1px solid var(--line)}#map{height:50dvh}.maphelp{top:auto;bottom:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<h1>🚴 Cyklotrasy CZ</h1><div class="subtitle">Generátor silničních okruhů pro ČR</div>
+
+<div class="section" style="border-top:0;padding-top:0;margin-top:0">
+<label>Start</label>
+<div class="row"><button id="locateBtn">📍 Moje poloha</button><button id="clearBtn">Vymazat</button></div>
+<div class="favrow"><select id="favSelect"><option value="">Oblíbené starty…</option></select><button id="saveFav">Uložit</button></div>
+<div class="hint">Klikni do mapy pro start. Dlouhým klepnutím na mapu v telefonu lze nastavit bod bez změny zoomu.</div>
+</div>
+
+<div class="section">
+<label>Požadovaná délka</label>
+<div class="slider"><input id="distance" type="range" min="20" max="250" step="5" value="80"><div class="value"><span id="distanceVal">80</span> km</div></div>
+<div class="hint">Algoritmus se snaží držet skutečnou délku co nejblíž cíli.</div>
+</div>
+
+<div class="section">
+<label>Charakter trasy</label>
+<div class="grid2">
+<div><select id="terrain"><option value="mixed">Smíšený profil</option><option value="flat">Co nejrovnější</option><option value="hilly">Kopcovitá</option></select></div>
+<div><select id="direction"><option value="-1">Náhodný směr</option><option value="0">Sever</option><option value="45">SV</option><option value="90">V</option><option value="135">JV</option><option value="180">Jih</option><option value="225">JZ</option><option value="270">Z</option><option value="315">SZ</option></select></div>
+</div>
+</div>
+
+<div class="section">
+<label>Silnice a povrch</label>
+<div class="check"><input id="asphalt" type="checkbox" checked><span>Preferovat asfalt</span></div>
+<div class="check"><input id="avoidMain" type="checkbox" checked><span>Omezit hlavní silnice</span></div>
+<div class="check"><input id="bikepaths" type="checkbox"><span>Preferovat cyklostezky</span></div>
+<div class="check"><input id="cobbles" type="checkbox" checked><span>Vyhnout se kostkám / špatnému povrchu</span></div>
+<div class="smallnum"><span>Max. převýšení</span><input id="maxElev" type="number" min="0" step="50" value="2000"></div>
+<div class="hint">Tyto preference ovlivňují volbu routing profilu a následné hodnocení. Přesné vyřazení konkrétního typu silnice závisí na datech OpenStreetMap/BRouter.</div>
+</div>
+
+<div class="section">
+<details><summary>🎯 Průjezdní bod</summary>
+<div class="hint">Volitelné: zapni a klikni do mapy. Návrhy se pokusí bod zahrnout do okruhu.</div>
+<div class="check"><input id="viaOn" type="checkbox"><span>Chci projet přes bod</span></div>
+</details>
+</div>
+
+<div class="section">
+<button id="generateBtn" class="primary" disabled>Vygenerovat 3 návrhy</button>
+<div id="status" class="status">Nejdříve nastav start.</div>
+</div>
+
+<div class="section"><label>Návrhy</label><div id="cards" class="cards"></div></div>
+<div class="section hint">Mapa © OpenStreetMap contributors. Routing BRouter. Před jízdou ověř aktuální zákazy, uzavírky a stav povrchu.</div>
+</aside>
+<main style="position:relative"><div id="map"></div><div class="maphelp">Klikni = start • při zapnutém průjezdním bodu druhý klik = bod</div></main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const map=L.map('map',{preferCanvas:true}).setView([49.8,15.5],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+let start=null,via=null,startMarker=null,viaMarker=null,routeLayers=[],routes=[],selected=0,elevCharts={};
+const $=id=>document.getElementById(id), distance=$('distance');
+$('distance').oninput=()=>{$('distanceVal').textContent=distance.value};
+
+function toast(s){const t=$('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function setStart(lat,lng){start={lat,lng};if(startMarker)map.removeLayer(startMarker);startMarker=L.marker([lat,lng]).addTo(map).bindPopup('Start');$('generateBtn').disabled=false;$('status').textContent=`Start: ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
+function setVia(lat,lng){via={lat,lng};if(viaMarker)map.removeLayer(viaMarker);viaMarker=L.circleMarker([lat,lng],{radius:8,weight:3}).addTo(map).bindPopup('Průjezdní bod');toast('Průjezdní bod nastaven')}
+map.on('click',e=>{if($('viaOn').checked&&start&&!via)setVia(e.latlng.lat,e.latlng.lng);else setStart(e.latlng.lat,e.latlng.lng)});
+$('viaOn').onchange=()=>{if(!$('viaOn').checked&&via){map.removeLayer(viaMarker);via=null}};
+$('locateBtn').onclick=()=>{if(!navigator.geolocation)return toast('Tento prohlížeč nepodporuje GPS');$('status').textContent='Zjišťuji polohu…';navigator.geolocation.getCurrentPosition(p=>{setStart(p.coords.latitude,p.coords.longitude);map.setView([p.coords.latitude,p.coords.longitude],12)},()=>toast('Povol lokalizaci v Safari'))};
+$('clearBtn').onclick=()=>{start=null;via=null;if(startMarker)map.removeLayer(startMarker);if(viaMarker)map.removeLayer(viaMarker);routeLayers.forEach(x=>map.removeLayer(x));routeLayers=[];routes=[];$('cards').innerHTML='';$('generateBtn').disabled=true;$('status').textContent='Nejdříve nastav start.'};
+
+function favs(){return JSON.parse(localStorage.getItem('cykloFavs')||'[]')}
+function renderFavs(){const s=$('favSelect');s.innerHTML='<option value="">Oblíbené starty…</option>';favs().forEach((f,i)=>{const o=document.createElement('option');o.value=i;o.textContent=f.name;s.appendChild(o)})}
+$('saveFav').onclick=()=>{if(!start)return toast('Nejdříve nastav start');const name=prompt('Název startu:');if(!name)return;const a=favs();a.push({name,lat:start.lat,lng:start.lng});localStorage.setItem('cykloFavs',JSON.stringify(a));renderFavs();toast('Start uložen')};
+$('favSelect').onchange=e=>{const f=favs()[e.target.value];if(f){setStart(f.lat,f.lng);map.setView([f.lat,f.lng],12)}};
+renderFavs();
+
+const profiles=[
+{name:'Silniční rychlá',profile:'fastbike',tag:'asfalt',desc:'rychlá silniční varianta'},
+{name:'Klidná',profile:'trekking',tag:'klidnější',desc:'více vedlejších cest a cyklotras'},
+{name:'Kopcovitá / alternativa',profile:'fastbike',tag:'profil',desc:'odlišný směr a převýšení'}
+];
+
+function hav(a,b){const R=6371,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function dist(c){let d=0;for(let i=1;i<c.length;i++)d+=hav(c[i-1],c[i]);return d}
+function gain(c){let g=0;for(let i=1;i<c.length;i++){let a=c[i-1][2],b=c[i][2];if(Number.isFinite(a)&&Number.isFinite(b)&&b>a)g+=b-a}return Math.round(g)}
+function flat(g){if(g.type==='FeatureCollection')return g.features.flatMap(flat);if(g.type==='Feature')return flat(g.geometry);if(g.type==='LineString')return g.coordinates;if(g.type==='MultiLineString')return g.coordinates.flat();return[]}
+
+function routeUrl(p,target,attempt,idx){
+ const u=new URL('https://brouter.de/brouter');
+ u.searchParams.set('lonlats',via?`${start.lng},${start.lat}|${via.lng},${via.lat}|${start.lng},${start.lat}`:`${start.lng},${start.lat}`);
+ u.searchParams.set('nogos','');u.searchParams.set('profile',p.profile);u.searchParams.set('alternativeidx',String(idx));u.searchParams.set('format','geojson');u.searchParams.set('engineMode','4');
+ u.searchParams.set('roundTripDistance',String(Math.round(target*1000/(2*Math.PI)*(1+attempt*.10))));
+ u.searchParams.set('roundTripPoints','7');
+ const dir=Number($('direction').value);if(dir>=0)u.searchParams.set('direction',String(dir));
+ return u.toString()
+}
+async function fetchRoute(p,target,idx){
+ let best=null;
+ for(let a=0;a<4;a++){const r=await fetch(routeUrl(p,target,a,idx));if(!r.ok)throw Error('BRouter '+r.status);const gj=await r.json(),c=flat(gj);if(c.length<2)continue;const x={profile:p,geojson:gj,coords:c,km:dist(c),gain:gain(c)};if(!best||Math.abs(x.km-target)<Math.abs(best.km-target))best=x;if(x.km>target*.9&&x.km<target*1.1)break}
+ return best
+}
+function score(r){
+ const target=Number(distance.value),e=r.gain, max=Number($('maxElev').value)||99999;
+ let s=100-Math.min(45,Math.abs(r.km-target)/target*100)-Math.min(30,e/Math.max(1,max)*30);
+ if($('terrain').value==='flat')s-=Math.min(20,e/1000*8);
+ if($('terrain').value==='hilly')s+=Math.min(12,e/1000*5);
+ if($('asphalt').checked)s+=6;if($('cobbles').checked)s+=4;
+ return Math.max(1,Math.min(100,Math.round(s)))
+}
+function draw(r,i){const l=L.geoJSON(r.geojson,{style:{weight:i===0?7:5,opacity:i===0?.9:.65,dashArray:i===1?'8 7':i===2?'3 7':null}}).addTo(map);routeLayers.push(l);l.on('click',()=>select(i))}
+function select(i){selected=i;document.querySelectorAll('.card').forEach((c,j)=>c.classList.toggle('active',i===j));routeLayers.forEach((l,j)=>l.setStyle({weight:j===i?7:5,opacity:j===i?.95:.6}));if(routeLayers[i])map.fitBounds(routeLayers[i].getBounds(),{padding:[25,25]})}
+
+function chart(id,r){
+ const c=$(id);if(!c)return;if(elevCharts[id])elevCharts[id].destroy();
+ const pts=r.coords.filter(x=>Number.isFinite(x[2]));if(pts.length<3){c.parentElement.innerHTML='<div class="hint">Výšková data nejsou k dispozici.</div>';return}
+ const step=Math.max(1,Math.floor(pts.length/80)),data=[];let km=0;for(let i=0;i<pts.length;i+=step){if(i>0)km+=hav(pts[i-step],pts[i]);data.push({x:+km.toFixed(1),y:Math.round(pts[i][2])})}
+ elevCharts[id]=new Chart(c,{type:'line',data:{datasets:[{data,borderWidth:2,pointRadius:0,tension:.2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:'linear',title:{display:true,text:'km'}},y:{title:{display:true,text:'m'}}}}})
+}
+function card(r,i){
+ const s=score(r),d=Math.round((r.km-Number(distance.value))*10)/10;
+ return `<div class="card ${i===selected?'active':''}" data-i="${i}">
+ <div class="cardtitle"><span>${r.profile.name}</span><span class="tag">${r.profile.tag}</span></div>
+ <div class="hint">${r.profile.desc} · <span class="score ${s>70?'good':'warn'}">${s}/100</span></div>
+ <div class="stats"><div class="stat"><b>${r.km.toFixed(1)} km</b><span>délka</span></div><div class="stat"><b>${r.gain} m</b><span>stoupání</span></div><div class="stat"><b>${d>=0?'+':''}${d} km</b><span>od cíle</span></div></div>
+ <div class="elev"><canvas id="e${i}"></canvas></div>
+ <div class="card-actions"><button onclick="downloadGPX(${i});event.stopPropagation()">GPX</button><button onclick="openMap(${i});event.stopPropagation()">Mapa</button></div>
+ </div>`
+}
+function gpx(r){const pts=r.coords.map(x=>`<trkpt lat="${x[1]}" lon="${x[0]}">${Number.isFinite(x[2])?`<ele>${x[2]}</ele>`:''}</trkpt>`).join('');return `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Cyklotrasy CZ" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${r.profile.name} ${r.km.toFixed(1)} km</name><trkseg>${pts}</trkseg></trk></gpx>`}
+function downloadGPX(i){const b=new Blob([gpx(routes[i])],{type:'application/gpx+xml'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`cyklotrasa-${Math.round(routes[i].km)}km.gpx`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function openMap(i){const c=routes[i].coords,m=c[Math.floor(c.length/2)];window.open(`https://brouter.de/brouter-web/#map=12/${m[1]}/${m[0]}`,'_blank')}
+window.downloadGPX=downloadGPX;window.openMap=openMap;
+
+$('generateBtn').onclick=async()=>{
+ if(!start)return;routeLayers.forEach(x=>map.removeLayer(x));routeLayers=[];routes=[];$('cards').innerHTML='';$('generateBtn').disabled=true;$('status').textContent='Generuji 3 návrhy…';
+ try{
+  const target=Number(distance.value),terrain=$('terrain').value;
+  const order=terrain==='hilly'?[2,0,1]:terrain==='flat'?[1,0,2]:[0,1,2];
+  const res=await Promise.all(order.map((idx,i)=>fetchRoute(profiles[i],target,idx)));
+  routes=res.filter(Boolean);routes.sort((a,b)=>score(b)-score(a));
+  routes.forEach((r,i)=>draw(r,i));$('cards').innerHTML=routes.map(card).join('');
+  document.querySelectorAll('.card').forEach((c,i)=>c.onclick=()=>select(i));
+  routes.forEach((r,i)=>chart('e'+i,r));if(routeLayers.length)map.fitBounds(L.featureGroup(routeLayers).getBounds(),{padding:[25,25]});
+  $('status').textContent=`Hotovo: ${routes.length} návrhy. Nejlepší skóre je zvýrazněné.`;
+ }catch(e){console.error(e);$('status').textContent='Routing se nepodařil. Zkus to znovu nebo zkontroluj připojení.'}
+ finally{$('generateBtn').disabled=false}
+};
+</script>
+</body>
+</html>
