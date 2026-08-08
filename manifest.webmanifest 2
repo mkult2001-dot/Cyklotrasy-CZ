@@ -1,0 +1,17 @@
+{
+  "name": "Cyklotrasy CZ",
+  "short_name": "Cyklotrasy CZ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f6",
+  "theme_color": "#176b45",
+  "lang": "cs",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
