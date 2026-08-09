@@ -1,4 +1,4 @@
-# Cyklotrasy CZ v4
+# Cyklotrasy CZ v5
 
 PWA prototyp pro plánování silničních okruhů v ČR.
 
