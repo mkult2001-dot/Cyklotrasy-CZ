@@ -1,30 +1,14 @@
-# Cyklotrasy CZ v5
+# Cyklotrasy CZ v6
 
-PWA prototyp pro plánování silničních okruhů v ČR.
+PWA prototyp pro plánování silničních tras v ČR.
 
-## V4 obsahuje
-- nový kandidátní algoritmus okruhů s více pokusy a kontrolou návratů/backtrackingu
-- tři záměrně odlišné návrhy: Nejrychlejší, Nejklidnější, Nejzajímavější
-- skóre kvality trasy
-- odhad podílu asfaltu, I./II. třídy a cyklostezek přes OSM/Overpass
-- barevné vrstvy trasy
-- profil Silniční kolo / Gravel / Trekking
-- preference hlavních silnic: neřešit / preferovat jiné / absolutně vyhnout
-- samostatné omezení I. a II. třídy
-- až 4 průjezdní body
-- maximální převýšení a maximální sklon
-- výškový profil propojený s mapou
-- odhad času podle průměrné rychlosti a převýšení
-- počasí a vítr přes Open-Meteo
-- POI: kavárny/restaurace, voda, WC, cykloservisy přes OpenStreetMap/Overpass
-- OSM cyklistická síť jako otevřená heatmapová vrstva (nejde o Strava proprietární heatmapu)
-- GPX export a BRouter odkaz
-- PWA / instalace na iPhone
-
-## Externí služby
-- OpenStreetMap / Leaflet
-- BRouter
-- Overpass API
-- Open-Meteo
-
-Routing a doplňkové vrstvy vyžadují internet. Před jízdou ověř aktuální uzavírky, zákazy a stav povrchu.
+## Změny v6
+- 3 režimy: Okruh / Tam a zpět / Vlastní
+- Okruh používá pouze 3 routingové kontrolní body + start/cíl; geometrické GPX body se neposílají jako kontrolní body
+- Tam a zpět vyžaduje koncový bod a vrací se po stejné geometrii
+- Vlastní spojuje start → průjezdní body v pořadí → start
+- maximální odchylka od požadované délky: 15 km
+- maximální převýšení a maximální sklon jsou tvrdé limity
+- pokud není nalezena platná trasa, aplikace to oznámí a kandidát je označen mimo limity
+- GPX geometrie je pro export zjednodušena na max. 1400 bodů
+- skóre již není uměle drženo nad 50
