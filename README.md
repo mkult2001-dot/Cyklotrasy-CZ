@@ -1,15 +1,16 @@
-# Cyklotrasy CZ v6.1
+# Cyklotrasy CZ – Mapy.com v7 prototyp
 
-PWA prototyp pro plánování silničních tras v ČR.
+Technický test nové základny aplikace:
+- Mapy.com turistická mapa (`outdoor`)
+- Mapy.com Routing API
+- `bike_road` pro silniční kolo
+- Start → Cíl
+- délka a čas
+- Leaflet
+- vhodné pro GitHub Pages
 
-## Opravy v6.1
-- opravené označení verze (v6.1)
-- nový service worker `sw-v6.js` s novou cache, který při nasazení odstraní staré cache verze
-- routingové kandidáty se načítají bez HTTP cache
-- aplikace zobrazuje pouze trasy, které splní všechny tvrdé limity
-- vzdálenost musí být v toleranci ±15 km
-- maximální převýšení a maximální sklon jsou tvrdé limity
-- Okruh filtruje vlastní křížení, opakované úseky a výrazný backtracking
-- Okruh používá pouze několik kontrolních bodů; geometrické body z routingu se neposílají zpět do routeru
-- Tam a zpět vrací stejnou trasu
-- Vlastní spojuje start → průjezdní body → start
+API klíč není součástí souboru. Vlož jej do aplikace; uloží se pouze do localStorage tohoto prohlížeče.
+
+Doporučené zabezpečení klíče v Mapy.com:
+HTTP referer: `mkult2001-dot.github.io`
+a pouze potřebné služby (mapové dlaždice + routing).
