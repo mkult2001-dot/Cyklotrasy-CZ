@@ -1,88 +1,114 @@
 <!doctype html>
 <html lang="cs">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Cyklotrasy CZ – Mapy.com v7 prototyp</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><title>Cyklotrasy CZ v7</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{display:flex;flex-direction:column;background:#f3f4f6;color:#111827}
-header{padding:12px 16px;background:#111827;color:white;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-h1{font-size:18px;margin:0}.sub{font-size:13px;opacity:.8}
-#controls{padding:12px 16px;background:white;border-bottom:1px solid #ddd;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-input,button,select{font:inherit}input{padding:9px 10px;border:1px solid #bbb;border-radius:8px;min-width:250px}
-button,select{padding:9px 12px;border:1px solid #bbb;border-radius:8px;background:white}
-button.primary{background:#1769e0;color:white;border-color:#1769e0}
-#map{flex:1;min-height:420px}#info{padding:10px 16px;background:white;border-top:1px solid #ddd;font-size:14px}
-.ok{color:#087443}.err{color:#b42318}.hint{opacity:.75}
-@media(max-width:700px){input{min-width:180px;flex:1}}
+:root{--bg:#f4f6f8;--card:#fff;--ink:#18202a;--muted:#65707d;--blue:#1769e0}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+body{display:flex;flex-direction:column}header{background:#111827;color:#fff;padding:11px 15px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}.badge{font-size:12px;padding:4px 8px;border:1px solid #4b5563;border-radius:999px;color:#d1d5db}
+#panel{background:var(--card);padding:10px 12px;border-bottom:1px solid #d8dde3;display:grid;gap:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row label{font-size:13px;color:var(--muted)}
+select,input[type=number],input[type=password],button{font:inherit;border:1px solid #b9c0c8;border-radius:8px;padding:8px 10px;background:#fff;color:inherit}
+input[type=number]{width:92px}input[type=password]{min-width:260px;flex:1}button{cursor:pointer}button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}button.danger{color:#a21caf}
+#modeHelp{font-size:12px;color:var(--muted)}
+#map{flex:1;min-height:430px}.leaflet-control-attribution{font-size:10px}
+#bottom{background:#fff;border-top:1px solid #d8dde3;max-height:35vh;overflow:auto;padding:10px 12px}
+#status{font-size:13px;margin-bottom:8px}.ok{color:#087443}.err{color:#b42318}.hint{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.card{border:1px solid #d5dae0;border-radius:10px;padding:9px;background:#fff}.card h3{margin:0 0 6px;font-size:14px}.card p{margin:3px 0;font-size:12px;color:#4b5563}.card button{margin-top:6px;width:100%}
+#favorites{display:flex;gap:6px;flex-wrap:wrap}.fav{font-size:12px;padding:5px 8px}
+small.note{color:var(--muted)}
+@media(max-width:760px){.cards{grid-template-columns:1fr}#bottom{max-height:45vh}header h1{font-size:16px}}
 </style>
 </head>
 <body>
-<header><h1>Cyklotrasy CZ · Mapy.com v7 prototyp</h1><span class="sub">Turistická mapa + routing pro silniční kolo</span></header>
-<div id="controls">
-<input id="apiKey" type="password" autocomplete="off" placeholder="Vlož API klíč Mapy.com">
-<button id="saveKey">Uložit klíč</button><button id="clearKey">Smazat klíč</button>
-<select id="mapset"><option value="outdoor">Turistická mapa</option><option value="basic">Základní mapa</option><option value="winter">Zimní mapa</option></select>
-<button id="clear">Vymazat body a trasu</button>
-<span id="status" class="hint">1. klik = start · 2. klik = cíl</span>
+<header><h1>Cyklotrasy CZ · v7</h1><span class="badge">Mapy.com routing</span><span class="badge">silniční kolo</span></header>
+<div id="panel">
+<div class="row">
+<label>API klíč</label><input id="key" type="password" placeholder="Vlož API klíč Mapy.com"><button id="save">Uložit</button>
+<label>Mapa</label><select id="mapset"><option value="outdoor">Turistická</option><option value="basic">Základní</option><option value="winter">Zimní</option></select>
+</div>
+<div class="row">
+<label>Typ okruhu</label><select id="mode"><option value="loop">Okruh</option><option value="outback">Tam a zpět</option><option value="custom">Vlastní</option></select>
+<label>Délka km</label><input id="dist" type="number" min="10" max="300" step="5" value="60">
+<label>Max. převýšení m</label><input id="elev" type="number" min="0" max="5000" step="50" value="800">
+<label>Max. sklon %</label><input id="slope" type="number" min="1" max="30" step=".5" value="12">
+<label><input id="avoid" type="checkbox" checked> vyhnout se hlavním silnicím</label>
+</div>
+<div class="row">
+<button id="start" class="primary">Nastavit start</button>
+<button id="gen" class="primary">vygenerovat trasu</button>
+<button id="clear">Vymazat</button>
+<span id="modeHelp">Klikni na mapu a nastav start. U Okruhu aplikace vytvoří 3 kandidáty.</span>
+</div>
+<div id="favorites"></div>
 </div>
 <div id="map"></div>
-<div id="info"><strong>Testovací režim:</strong> Start → Cíl, <strong>bike_road</strong>. <span id="metrics"></span></div>
-
+<div id="bottom">
+<div id="status" class="hint">Připraveno.</div>
+<div id="cards" class="cards"></div>
+<small class="note">Pozn.: „vyhnout se hlavním silnicím“ používá parametr Mapy.com avoidHighways; ten garantuje vyhnutí dálnicím/rychlostním komunikacím, nikoli automaticky všem silnicím I. třídy.</small>
+</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (() => {
-const keyInput=document.getElementById('apiKey'),status=document.getElementById('status'),metrics=document.getElementById('metrics');
-const stored=localStorage.getItem('cyklotrasy_mapy_api_key'); if(stored) keyInput.value=stored;
-const map=L.map('map',{preferCanvas:true}).setView([49.8,15.5],8);
-let tiles,startMarker,endMarker,routeLayer,clicks=[];
-const attribution='<a href="https://mapy.com/" target="_blank" rel="noopener">Mapy.com</a> | © Seznam.cz a.s. a další';
-
-function addTiles(){
- if(tiles) map.removeLayer(tiles);
- const key=keyInput.value.trim(); if(!key){status.textContent='Nejdříve vlož API klíč Mapy.com.';status.className='err';return;}
- tiles=L.tileLayer(`https://api.mapy.com/v1/maptiles/${document.getElementById('mapset').value}/256/{z}/{x}/{y}?apikey=${encodeURIComponent(key)}`,
- {minZoom:0,maxZoom:19,tileSize:256,attribution});
- tiles.on('tileerror',()=>{status.textContent='Chyba mapových dlaždic. Zkontroluj API klíč a jeho omezení.';status.className='err';});
- tiles.addTo(map); status.textContent='Mapa Mapy.com načtena. 1. klik = start · 2. klik = cíl';status.className='hint';
-}
-document.getElementById('saveKey').onclick=()=>{const k=keyInput.value.trim();if(k){localStorage.setItem('cyklotrasy_mapy_api_key',k);addTiles();}};
-document.getElementById('clearKey').onclick=()=>{localStorage.removeItem('cyklotrasy_mapy_api_key');keyInput.value='';if(tiles)map.removeLayer(tiles);status.textContent='API klíč odstraněn z tohoto zařízení.';};
-document.getElementById('mapset').onchange=addTiles;
-
-function clearAll(){
- clicks=[];[startMarker,endMarker,routeLayer].forEach(x=>{if(x)map.removeLayer(x)});
- startMarker=endMarker=routeLayer=null;metrics.textContent='';status.textContent='1. klik = start · 2. klik = cíl';status.className='hint';
-}
-document.getElementById('clear').onclick=clearAll;
-
-async function route(a,b){
- const key=keyInput.value.trim(); if(!key)return;
- status.textContent='Počítám trasu přes Mapy.com…';status.className='hint';
- const u=new URL('https://api.mapy.com/v1/routing/route');
- u.searchParams.set('apikey',key);u.searchParams.set('lang','cs');
- u.searchParams.set('start',`${a.lng},${a.lat}`);u.searchParams.set('end',`${b.lng},${b.lat}`);
- u.searchParams.set('routeType','bike_road');u.searchParams.set('format','geojson');
- try{
-  const r=await fetch(u,{mode:'cors',cache:'no-store'}); if(!r.ok)throw new Error(`HTTP ${r.status}`);
-  const d=await r.json();if(!d.geometry)throw new Error('Mapy.com nevrátily geometrii trasy.');
-  if(routeLayer)map.removeLayer(routeLayer);
-  routeLayer=L.geoJSON(d.geometry,{style:{color:'#1565e0',weight:6,opacity:.9}}).addTo(map);
-  map.fitBounds(routeLayer.getBounds(),{padding:[30,30]});
-  const km=d.length/1000,min=Math.round(d.duration/60);
-  metrics.innerHTML=` · <strong>${km.toFixed(1)} km</strong> · ${Math.floor(min/60)} h ${min%60} min`;
-  status.textContent='Trasa vypočtena Mapy.com · bike_road';status.className='ok';
- }catch(e){console.error(e);status.textContent=`Routing selhal: ${e.message}`;status.className='err';}
-}
+const $=id=>document.getElementById(id), key=$('key'), status=$('status'), cards=$('cards'), mode=$('mode');
+const saved=localStorage.getItem('cyklotrasy_mapy_key'); if(saved) key.value=saved;
+const map=L.map('map').setView([49.8,15.5],8); let tiles,startMarker,endMarker,routeLayers=[],clickMode='start';
+const favorites=JSON.parse(localStorage.getItem('cyklotrasy_favs')||'[]');
+const colors=['#1565e0','#e53935','#8e24aa'];
+function msg(t,c='hint'){status.textContent=t;status.className=c}
+function tilesOn(){if(tiles)map.removeLayer(tiles);const k=key.value.trim();if(!k)return;
+tiles=L.tileLayer(`https://api.mapy.com/v1/maptiles/${$('mapset').value}/256/{z}/{x}/{y}?apikey=${encodeURIComponent(k)}`,{maxZoom:19,attribution:'<a href="https://mapy.com/">Mapy.com</a> | © Seznam.cz a.s. a další'}).addTo(map)}
+$('save').onclick=()=>{if(key.value.trim()){localStorage.setItem('cyklotrasy_mapy_key',key.value.trim());tilesOn();msg('Klíč uložen a mapa načtena.')}};
+$('mapset').onchange=tilesOn;
+function clearMap(){routeLayers.forEach(x=>map.removeLayer(x));routeLayers=[];if(startMarker)map.removeLayer(startMarker);if(endMarker)map.removeLayer(endMarker);startMarker=endMarker=null;cards.innerHTML='';msg('Vymazáno.')}
+$('clear').onclick=clearMap;
+function hav(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lng-a.lng)*Math.PI/180,x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function destination(p,bearing,km){const R=6371,lat=p.lat*Math.PI/180,lon=p.lng*Math.PI/180,br=bearing*Math.PI/180,d=km/R;const la=Math.asin(Math.sin(lat)*Math.cos(d)+Math.cos(lat)*Math.sin(d)*Math.cos(br));const lo=lon+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(lat),Math.cos(d)-Math.sin(lat)*Math.sin(la));return {lat:la*180/Math.PI,lng:lo*180/Math.PI}}
+function ptsFromGeo(g){let a=[];if(g.type==='LineString')a=g.coordinates;else if(g.type==='MultiLineString')a=g.coordinates.flat();return a.map(x=>({lat:x[1],lng:x[0]}))}
+function intersect(a,b,c,d){function cross(p,q,r){return(q.lng-p.lng)*(r.lat-p.lat)-(q.lat-p.lat)*(r.lng-p.lng)}function on(p,q,r){return Math.min(p.lng,r.lng)<=q.lng+1e-10&&q.lng<=Math.max(p.lng,r.lng)+1e-10&&Math.min(p.lat,r.lat)<=q.lat+1e-10&&q.lat<=Math.max(p.lat,r.lat)+1e-10}
+const c1=cross(a,b,c),c2=cross(a,b,d),c3=cross(c,d,a),c4=cross(c,d,b);return ((c1>0&&c2<0)||(c1<0&&c2>0))&&((c3>0&&c4<0)||(c3<0&&c4>0))||(Math.abs(c1)<1e-10&&on(a,c,b))||(Math.abs(c2)<1e-10&&on(a,d,b))||(Math.abs(c3)<1e-10&&on(c,a,d))||(Math.abs(c4)<1e-10&&on(c,b,d))}
+function selfCross(points){for(let i=0;i<points.length-1;i++)for(let j=i+2;j<points.length-1;j++){if(i===0&&j===points.length-2)continue;if(intersect(points[i],points[i+1],points[j],points[j+1]))return true}return false}
+async function elevation(points,k){let sample=[];for(let i=0;i<points.length;i+=Math.max(1,Math.floor(points.length/240)))sample.push(points[i]);sample.push(points[points.length-1]);
+let pos=sample.map(p=>`${p.lng},${p.lat}`).join(';');const u=new URL('https://api.mapy.com/v1/elevation');u.searchParams.set('apikey',k);u.searchParams.set('positions',pos);u.searchParams.set('lang','cs');
+const r=await fetch(u);if(!r.ok)throw Error('Elevation HTTP '+r.status);const d=await r.json();let gain=0,maxSlope=0;for(let i=1;i<d.length;i++){let e1=d[i-1].elevation,e2=d[i].elevation,dd=hav(sample[i-1],sample[i])*1000;if(e1>-99900&&e2>-99900&&dd>1){if(e2>e1)gain+=e2-e1;maxSlope=Math.max(maxSlope,Math.abs((e2-e1)/dd*100))}}return {gain,maxSlope}}
+async function callRoute(points,k){const u=new URL('https://api.mapy.com/v1/routing/route');u.searchParams.set('apikey',k);u.searchParams.set('lang','cs');u.searchParams.set('start',`${points[0].lng},${points[0].lat}`);u.searchParams.set('end',`${points.at(-1).lng},${points.at(-1).lat}`);u.searchParams.set('routeType','bike_road');u.searchParams.set('format','geojson');u.searchParams.set('waypoints',points.slice(1,-1).map(p=>`${p.lng},${p.lat}`).join(';'));if($('avoid').checked)u.searchParams.set('avoidHighways','true');
+const r=await fetch(u);if(!r.ok)throw Error('Routing HTTP '+r.status);return await r.json()}
+function candidateWaypoints(start,profile,scale){const target=+$('dist').value;const radius=target*scale/3.2;const sets=[[35,145,250],[80,190,300],[125,235,340]];return sets[profile].map(b=>destination(start,b,radius))}
+function score(c){const target=+$('dist').value,err=Math.abs(c.km-target),eOK=c.gain<=+$('elev').value,sOK=c.maxSlope<=+$('slope').value,cross=c.cross;let s=100-Math.min(60,err*3)-Math.min(35,Math.max(0,c.gain-+$('elev').value)/20)-Math.min(25,Math.max(0,c.maxSlope-+$('slope').value)*3)-(cross?40:0);return Math.max(0,Math.round(s))}
+async function generate(){
+const k=key.value.trim();if(!k){msg('Nejdříve vlož API klíč Mapy.com.','err');return}if(!startMarker){msg('Nejdříve nastav start.','err');return}
+if(mode.value==='outback'){msg('Klikni na koncový bod pro variantu Tam a zpět.');clickMode='end';return}
+if(mode.value==='custom'){msg('Klikni na průjezdní body. Až budeš hotov, stiskni Vygenerovat trasu znovu.');clickMode='custom';return}
+cards.innerHTML='';routeLayers.forEach(x=>map.removeLayer(x));routeLayers=[];msg('Hledám 3 okruhy. Počet API volání je záměrně omezený.');const arr=[];
+for(let i=0;i<3;i++){let best=null;for(const scale of [.8,1.0,1.2,1.4]){try{const w=candidateWaypoints(startMarker.getLatLng(),i,scale);const d=await callRoute([startMarker.getLatLng(),...w,startMarker.getLatLng()],k);const p=ptsFromGeo(d.geometry);const ev=await elevation(p,k);const c={data:d,points:p,km:d.length/1000,gain:ev.gain,maxSlope:ev.maxSlope,cross:selfCross(p)};c.score=score(c);if(!best||c.score>best.score)best=c;if(c.km>+$('dist').value-15&&c.km<+$('dist').value+15&&c.gain<=+$('elev').value&&c.maxSlope<=+$('slope').value&&!c.cross)break}catch(e){console.error(e)}}if(best)arr.push(best)}
+arr.sort((a,b)=>b.score-a.score);showCandidates(arr);msg(arr.length?'Hotovo. Vyber jednu ze 3 variant.':'Nepodařilo se získat trasu.','ok')}
+function showCandidates(arr){cards.innerHTML='';arr.forEach((c,i)=>{const line=L.geoJSON(c.data.geometry,{style:{color:colors[i],weight:5,opacity:.82,dashArray:i?'':'0'}});routeLayers.push(line);line.addTo(map);
+const okD=Math.abs(c.km-+$('dist').value)<=15,okE=c.gain<=+$('elev').value,okS=c.maxSlope<=+$('slope').value,okC=!c.cross;
+const div=document.createElement('div');div.className='card';div.innerHTML=`<h3>Varianta ${i+1} · skóre ${c.score}/100</h3><p>Délka: <b>${c.km.toFixed(1)} km</b> ${okD?'✓':'⚠'}</p><p>Převýšení: <b>${Math.round(c.gain)} m</b> ${okE?'✓':'✕'}</p><p>Max. sklon: <b>${c.maxSlope.toFixed(1)} %</b> ${okS?'✓':'✕'}</p><p>Bez křížení: <b>${okC?'ano':'ne'}</b></p><button>Vybrat trasu</button>`;div.querySelector('button').onclick=()=>map.fitBounds(line.getBounds(),{padding:[30,30]});cards.appendChild(div)});
+if(routeLayers[0])map.fitBounds(routeLayers[0].getBounds(),{padding:[30,30]})}
+async function outback(end){
+const k=key.value.trim();const a=startMarker.getLatLng();msg('Počítám trasu tam…');try{const d=await callRoute([a,end],k);const p=ptsFromGeo(d.geometry),ev=await elevation(p,k);const forward=p,reverse=[...p].reverse(),both=forward.concat(reverse);const line=L.polyline(both,{color:colors[0],weight:6,opacity:.85}).addTo(map);routeLayers.push(line);const km=(d.length*2)/1000;cards.innerHTML=`<div class="card"><h3>Tam a zpět</h3><p>Délka: <b>${km.toFixed(1)} km</b></p><p>Převýšení jedním směrem: ${Math.round(ev.gain)} m</p><button id="nav">Otevřít trasu v Mapy.com</button></div>`;$('nav').onclick=()=>window.open(`https://mapy.com/fnc/v1/route?start=${a.lng},${a.lat}&end=${end.lng},${end.lat}&routeType=bike_road&navigate=true`,'_blank');map.fitBounds(line.getBounds(),{padding:[30,30]});msg('Varianta Tam a zpět vytvořena.','ok')}catch(e){msg(e.message,'err')}}
+let customPoints=[];
 map.on('click',e=>{
- if(!keyInput.value.trim()){status.textContent='Vlož a ulož API klíč Mapy.com.';status.className='err';return;}
- if(clicks.length>=2)clearAll();clicks.push(e.latlng);
- if(clicks.length===1){startMarker=L.marker(e.latlng).addTo(map).bindPopup('Start').openPopup();status.textContent='Start nastaven. Nyní klikni na cíl.';}
- else{endMarker=L.marker(e.latlng).addTo(map).bindPopup('Cíl').openPopup();route(clicks[0],clicks[1]);}
+if(!key.value.trim()){msg('Vlož API klíč Mapy.com.','err');return}
+if(clickMode==='start'){if(startMarker)map.removeLayer(startMarker);startMarker=L.marker(e.latlng).addTo(map).bindPopup('Start').openPopup();clickMode='idle';msg('Start nastaven.');return}
+if(clickMode==='end'){if(endMarker)map.removeLayer(endMarker);endMarker=L.marker(e.latlng).addTo(map).bindPopup('Konec').openPopup();clickMode='idle';outback(e.latlng);return}
+if(clickMode==='custom'){customPoints.push(e.latlng);L.circleMarker(e.latlng,{radius:6,color:'#8e24aa',fillOpacity:1}).addTo(map).bindTooltip('Průjezdní bod '+customPoints.length);msg('Přidán průjezdní bod '+customPoints.length+'. Pro výpočet stiskni „vygenerovat trasu“.');}
 });
-if(stored)addTiles();
+$('start').onclick=()=>{clickMode='start';msg('Klikni na mapu na požadovaný start.')};
+mode.onchange=()=>{customPoints=[];clickMode='idle';$('modeHelp').textContent=mode.value==='loop'?'Klikni na mapu a nastav start. Aplikace vytvoří 3 kandidáty.':mode.value==='outback'?'Nastav start, potom klikni na koncový bod.':'Nastav start, potom klikni na průjezdní body.'};
+$('gen').onclick=async()=>{
+if(mode.value==='loop'){await generate();return}
+if(mode.value==='outback'){if(startMarker&&!endMarker){clickMode='end';msg('Klikni na koncový bod.')}else if(startMarker&&endMarker)await outback(endMarker.getLatLng());return}
+if(mode.value==='custom'){if(!startMarker||customPoints.length===0){msg('Potřebuješ start a alespoň jeden průjezdní bod.','err');return}
+const k=key.value.trim();try{const d=await callRoute([startMarker.getLatLng(),...customPoints,startMarker.getLatLng()],k);const p=ptsFromGeo(d.geometry),ev=await elevation(p,k);const line=L.geoJSON(d.geometry,{style:{color:colors[1],weight:6}}).addTo(map);routeLayers.push(line);cards.innerHTML=`<div class="card"><h3>Vlastní trasa</h3><p>Délka: <b>${(d.length/1000).toFixed(1)} km</b></p><p>Převýšení: ${Math.round(ev.gain)} m · max. sklon ${ev.maxSlope.toFixed(1)} %</p></div>`;map.fitBounds(line.getBounds(),{padding:[30,30]});msg('Vlastní trasa vytvořena.','ok')}catch(e){msg(e.message,'err')}}
+};
+if(saved)tilesOn();
 })();
 </script>
 </body></html>
